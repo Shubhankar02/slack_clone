@@ -4,13 +4,17 @@ const socket = require('socket.io');
 
 let namespaces = require('./data/namespaces');
 
+
+const expressServer = app.listen(3000, () => {
+    console.log('Server has started on port 3000');
+});
+
 app.use(express.static(__dirname + '/public'));
 
-const expressServer = app.listen(3000);
+
 const io = socket(expressServer);
-
-
 io.on('connection', (socket) => {
+    // console.log(socket.handshake);
     // build an array to send back with the img and endpoint for each ns
     let nsData = namespaces.map((ns) => {
         return {
@@ -27,52 +31,61 @@ io.on('connection', (socket) => {
 // Loop through each namespace and listen for a connection
 namespaces.forEach((namespace) => {
     io.of(namespace.endpoint).on('connection', (nsSocket) => {
-        console.log(`${nsSocket.id} has join ${namespace.endpoint}`)
+        const userName = nsSocket.handshake.query.userName;
+        // console.log(`${nsSocket.id} has join ${namespace.endpoint}`);
         // a Socket has connected to one of the chat group namespaces
         // send that ns info back
-        nsSocket.emit('nsRoomLoad', namespaces[0].rooms);
+        nsSocket.emit('nsRoomLoad', namespace.rooms);
         nsSocket.on('joinRoom', (roomToJoin, numberOfUsersCallback) => {
             // deal with history once we have it
+            console.log(nsSocket.rooms);
+            const roomToLeave = Object.keys(nsSocket.rooms)[1];
+            nsSocket.leave(roomToLeave);
+            updateUsersInRoom(namespace, roomToLeave);
             nsSocket.join(roomToJoin);
             // io.of('/wiki').in(roomToJoin).clients((error, clients) => {
             //     console.log(clients.length);
             //     numberOfUsersCallback(clients.length);
             // });
-            const nsRoom = namespaces[0].rooms.find((room) => {
+            const nsRoom = namespace.rooms.find((room) => {
                 return room.roomTitle === roomToJoin
             });
+            // console.log(nsRoom);
             nsSocket.emit('historyCatchup', nsRoom.history);
-            // Send back the number of users in this room to all socket connected
-            // to this room
-            io.of('/wiki').in(roomToJoin).clients((error, clients) => {
-                console.log(clients.length);
-                io.of('/wiki').in(roomToJoin).emit('updateMembers', clients.length)
-            })
+            updateUsersInRoom(namespace, roomToJoin)
         });
         nsSocket.on('newMessageToServer', (msg) => {
             const fullMsg = {
                 text : msg.text,
                 time : Date.now(),
-                userName : "Shubh",
+                userName : userName,
                 avatar : 'http://via.placeholder.com/30'
             };
 
             // Send this message to All the sockets that are in the room that THIS socket is in
             // How can we find what rooms THIS socket is in
-            console.log(nsSocket.rooms);
-            // the uer will be in the 2nd room of the object
+            // console.log(nsSocket.rooms);
+            // the user will be in the 2nd room of the object
             // this is because the socket ALWAYS join its own room on connection
             const roomTitle = Object.keys(nsSocket.rooms)[1];
             // we need to find the Room object for this room
-            const nsRoom = namespaces[0].rooms.find((room) => {
+            const nsRoom = namespace.rooms.find((room) => {
                return room.roomTitle === roomTitle
             });
             console.log(nsRoom);
             nsRoom.addMessage(fullMsg);
-            io.of('/wiki').to(roomTitle).emit('messageToClient', fullMsg);
+            io.of(namespace.endpoint).to(roomTitle).emit('messageToClients', fullMsg);
         })
 
     })
 });
 
+function updateUsersInRoom(namespace, roomToJoin) {
+    // Send back the number of users in this room to all socket connected
+    // to this room
+    io.of(namespace.endpoint).in(roomToJoin).clients((error, clients) => {
+        // console.log(clients.length);
+        io.of(namespace.endpoint).in(roomToJoin).emit('updateMembers', clients.length)
+    })
+}
 

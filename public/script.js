@@ -1,4 +1,11 @@
-const socket = io('http://localhost:3000'); // the '/' Namespace
+const userName = prompt("What is your username");
+
+// const socket = io('http://localhost:3000'); // the '/' Namespace
+const socket = io('http://localhost:3000', {
+    query : {
+        userName : userName
+    }
+}); // the '/' Namespace
 let nsSocket = "";
 
 // Listen for nsList, which is a list of all the namespaces.
@@ -15,11 +22,10 @@ socket.on('nsList', (nsData) => {
         // console.log(element);
         element.addEventListener("click", (e) => {
             const nsEndpoint = element.getAttribute('ns');
-            console.log(`${nsEndpoint}, I should go to now`);
+            // console.log(`${nsEndpoint}, I should go to now`);
+            joinNs(nsEndpoint);
         });
     });
-
-    joinNs("/wiki");
 });
 
 

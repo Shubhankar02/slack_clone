@@ -1,4 +1,10 @@
 function joinNs(endpoint) {
+    if (nsSocket) {
+        // Check to see if nsSocket is actually a socket
+        nsSocket.close();
+        // remove the eventListener before its added again
+        document.querySelector('#user-input').removeEventListener('submit', formSubmission )
+    }
     nsSocket = io(`http://localhost:3000${endpoint}`);
     nsSocket.on('nsRoomLoad', (nsRooms) => {
         // console.log(nsRooms)
@@ -18,6 +24,7 @@ function joinNs(endpoint) {
         Array.from(roomNodes).forEach((element) => {
             element.addEventListener("click", (e) => {
                 console.log("Someone click on", e.target.innerText);
+                joinRoom(e.target.innerText);
             })
         });
         // Add room automatically...first time here
@@ -28,17 +35,18 @@ function joinNs(endpoint) {
     });
 
 
-    nsSocket.on('messageToClient', (msg) => {
+    nsSocket.on('messageToClients', (msg) => {
         console.log(msg);
         const newMsg = buildHTML(msg);
         document.querySelector('#messages').innerHTML += newMsg;
     });
+    document.querySelector('.message-form').addEventListener('submit', formSubmission );
+}
 
-    document.querySelector('.message-form').addEventListener('submit', (event) => {
-        event.preventDefault();
-        const newMessage = document.querySelector("#user-message").value;
-        nsSocket.emit('newMessageToServer', {text: newMessage})
-    });
+function formSubmission(event) {
+    event.preventDefault();
+    const newMessage = document.querySelector("#user-message").value;
+    nsSocket.emit('newMessageToServer', {text: newMessage})
 }
 
 function buildHTML(msg) {
@@ -54,6 +62,5 @@ function buildHTML(msg) {
             </div>
      </li>
     `
-    return newHTML
-
+    return newHTML;
 }

@@ -5,12 +5,12 @@ function joinRoom(roomName) {
         document.querySelector(".curr-room-num-users").innerHTML = `${newNumberOfMembers} <span class="glyphicon glyphicon-user"></span>`
     });
     nsSocket.on('historyCatchup', (history) => {
-       const messagesUl = document.querySelector('#messages')
+       const messagesUl = document.querySelector('#messages');
         messagesUl.innerHTML = "";
         history.forEach((msg) => {
             const newMessage = buildHTML(msg);
-            const currentMessages = messagesUl.innerHTML;
-            messagesUl.innerHTML += currentMessages + newMessage
+            // const currentMessages = messagesUl.innerHTML;
+            messagesUl.innerHTML += newMessage
         });
         messagesUl.scrollTo(0, messagesUl.scrollHeight);
 
